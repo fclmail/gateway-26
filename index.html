@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pay with MetaMask</title>
+  <style>
+    body {
+      background-color: #1e2a47;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 50px;
+    }
+    h1 {
+      font-size: 3em;
+      margin-bottom: 20px;
+      color: #f39c12;
+    }
+    .pay-button {
+      background-color: #f39c12;
+      padding: 15px 40px;
+      font-size: 1.2em;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      border-radius: 5px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .pay-button:hover {
+      background-color: #e67e22;
+    }
+    .info {
+      margin-top: 20px;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Pay with MetaMask (Polygon USDC)</h1>
+  <p>Choose an amount to pay via Polygon USDC (ERC20)</p>
+
+  <!-- Dropdown menu to select payment -->
+  <select id="paymentAmount">
+    <option value="0.01">0.01 USDC</option>
+    <option value="200">200 USDC</option>
+    <option value="1000">1000 USDC</option>
+  </select>
+
+  <br><br>
+
+  <!-- Pay with MetaMask button -->
+  <button class="pay-button" id="payButton">Pay Now with MetaMask</button>
+
+  <div id="status" class="info"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.5.2/web3.min.js"></script>
+  
+  <script>
+    const recipientAddress = '0x2Ee934331C771F0f5901314226375F469e7CeceC'; // Replace with your recipient address
+    const usdcAddress = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'; // Polygon USDC token address
+    const decimals = 6; // USDC decimals
+
+    // MetaMask Connection and Payment Logic
+    async function connectAndPay() {
+      const statusDiv = document.getElementById("status");
+      const paymentAmount = document.getElementById("paymentAmount").value;
+
+      // Detect MetaMask
+      if (typeof window.ethereum !== 'undefined') {
+        console.log("MetaMask is detected!");
+
+        const web3 = new Web3(window.ethereum);
+
+        try {
+          // Request account access
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+          // Get user accounts
+          const accounts = await web3.eth.getAccounts();
+          const senderAddress = accounts[0];
+          console.log("Connected account:", senderAddress);
+
+          // Prepare transaction
+          const amountInTokens = web3.utils.toBN(paymentAmount * Math.pow(10, decimals)); // Convert to USDC decimals
+
+          const usdcABI = [
+            {
+              "constant": false,
+              "inputs": [
+                { "name": "_to", "type": "address" },
+                { "name": "_value", "type": "uint256" }
+              ],
+              "name": "transfer",
+              "outputs": [{ "name": "", "type": "bool" }],
+              "payable": false,
+              "stateMutability": "nonpayable",
+              "type": "function"
+            }
+          ];
+
+          // Create USDC contract instance
+          const usdcContract = new web3.eth.Contract(usdcABI, usdcAddress);
+
+          // Send transaction
+          const txHash = await usdcContract.methods.transfer(recipientAddress, amountInTokens).send({
+            from: senderAddress,
+            gas: 200000,
+            gasPrice: web3.utils.toWei('30', 'gwei'), // Adjust gas price as needed
+          });
+
+          statusDiv.innerHTML = `Transaction successful! Tx Hash: ${txHash.transactionHash}`;
+          console.log("Transaction successful:", txHash);
+        } catch (error) {
+          console.error("Error during transaction:", error);
+          statusDiv.innerHTML = `Transaction failed: ${error.message}`;
+        }
+      } else {
+        // MetaMask not installed
+        statusDiv.innerHTML = `
+          MetaMask is not detected.<br>
+          Please install <a href="https://metamask.io/download.html" style="color: #f39c12;">MetaMask</a>.
+        `;
+      }
+    }
+
+    // Set up button click listener
+    document.getElementById("payButton").addEventListener("click", connectAndPay);
+  </script>
+</body>
+</html>
